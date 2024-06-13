@@ -48,6 +48,12 @@ pub fn gen_key() -> (Rsa<Private>, X509) {
     x509_builder.set_pubkey(&pub_key).unwrap();
     x509_builder.set_not_before(&Asn1Time::days_from_now(0).unwrap());
     x509_builder.set_not_after(&Asn1Time::days_from_now(365).unwrap());
+    x509_builder
+        .sign(
+            PKey::from_rsa(priv_key.clone()).unwrap().as_ref(),
+            hash::MessageDigest::sha256(),
+        )
+        .unwrap();
     x509_builder.set_subject_name(&x509_name.build()).unwrap();
     let cert = x509_builder.build();
     (priv_key, cert)
