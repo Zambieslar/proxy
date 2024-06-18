@@ -19,6 +19,12 @@ pub enum Action {
     DELETE,
 }
 
+#[derive(Default, Debug)]
+pub struct Param {
+    pub key: String,
+    pub value: String,
+}
+
 pub struct StateMachine {
     pub state: (State, SubState),
     pub offset: usize,
@@ -27,13 +33,13 @@ pub struct StateMachine {
     pub buf: String,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Request {
     pub method: String,
     pub hsot: String,
     pub version: String,
     pub host: String,
-    pub params: Vec<(String, String)>,
+    pub params: Vec<Param>,
 }
 
 impl State {

@@ -1,45 +1,67 @@
-use std::{iter, prelude::*, rc::Rc};
+use std::{iter, prelude::*};
 
 use crate::{
+    definitions::SubState::*,
     definitions::*,
     evaluation::{self, *},
     traits::*,
 };
 
 impl StateMachine {
-    pub fn run(&mut self, data: &[u8]) -> Request {
+    pub fn run(&mut self, data: Vec<u8>) -> Request {
         let mut request = Request::default();
-        let iter = Rc::new(data);
-        for byte in iter.into_iter() {
+        loop {
+            self.offset += 1;
+            if self.offset() == data.len() {
+                self.next_state();
+            }
             match self.state.0 {
                 State::Start => self.next_state(),
                 State::Scan => match self.state.1 {
-                    SubState::METHOD => self.evaluate(*byte, &mut request),
-                    SubState::VERSION => match byte {
-                        b':' | b' ' => self.next_substate(),
-                        b'\n' => self.next_substate(),
-                        _ => {
-                            request.version = self.buf();
-                        }
-                    },
-                    SubState::HOST => match byte {
-                        b':' | b' ' => self.next_substate(),
-                        b'\n' => self.next_substate(),
-                        _ => {
-                            request.host = self.buf();
-                        }
-                    },
-                    SubState::PARAMS => match byte {
-                        b':' | b' ' => self.next_substate(),
-                        b'\n' => self.next_substate(),
-                        _ => {
-                            request.method = self.buf();
+                    SubState::METHOD => {
+                        self.evaluate(&mut request, data.clone());
+                        request.method = self.buf();
+                        self.buf.clear();
+                    }
+                    SubState::VERSION => {
+                        self.evaluate(&mut request, data.clone());
+                        request.version = self.buf();
+                        self.buf.clear();
+                    }
+                    SubState::HOST => {
+                        self.evaluate(&mut request, data.clone());
+                        request.host = self.buf();
+                        self.buf.clear();
+                    }
+                    SubState::PARAMS => loop {
+                        let mut param = Param::default();
+                        match data[self.offset()] {
+                            b':' | b' ' => {
+                                param.key = self.buf();
+                                self.buf.clear();
+                                match data[self.offset()] {
+                                    b'\n' => {
+                                        if self.offset() == data.len() {
+                                            self.next_state();
+                                            break;
+                                        }
+                                        param.value = self.buf();
+                                        self.buf.clear();
+                                    }
+                                    _ => {
+                                        self.buf.push(data[self.offset()] as char);
+                                        self.offset += 1;
+                                    }
+                                }
+                            }
+                            _ => {
+                                self.buf.push(data[self.offset()] as char);
+                            }
                         }
                     },
                 },
-                State::Complete => break,
+                State::Complete => return request,
             }
         }
-        request
     }
 }

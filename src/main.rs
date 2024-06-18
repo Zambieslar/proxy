@@ -1,4 +1,5 @@
 #![allow(unused_imports, dead_code, unused_variables, unused_results)]
+use std::time::Duration;
 #[allow(unused_imports)]
 use std::{
     io::{BufRead, BufReader, Read, Write},
@@ -8,7 +9,7 @@ use std::{
     thread,
 };
 
-use definitions::StateMachine;
+use definitions::{Request, StateMachine};
 use openssl::{
     pkey::{Private, Public},
     rsa::Rsa,
@@ -37,16 +38,17 @@ fn main() {
             Ok(mut connection) => {
                 let (tx, rx) = mpsc::channel();
                 thread::spawn(move || {
-                    let mut buf = [0u8; 1500];
+                    let mut buf: Vec<u8> = Vec::new();
                     let mut stream = BufReader::new(&mut connection);
                     stream.read(&mut buf).unwrap();
                     tx.send(buf.clone()).unwrap();
                 });
                 loop {
                     if let Ok(result) = rx.recv() {
-                        //                        let request: Request = machine.run(&result);
-                        let response: String = result.into_iter().map(|x| x as char).collect();
-                        println!("{}", response);
+                        let raw: String = result.clone().into_iter().map(|x| x as char).collect();
+                        println!("{}", raw);
+                        let request = machine.run(result);
+                        println!("{:#?}", request);
                         break;
                     } else {
                         continue;
@@ -57,36 +59,3 @@ fn main() {
         }
     }
 }
-
-//let key = Arc::clone(&key);
-//let crt = Arc::clone(&crt);
-//let tx = tx.clone();
-//thread::spawn(move || loop {
-//    let tx = tx.clone();
-//    match (r1, r2) {
-//        (Ok(r1), Ok(r2)) => {
-//            let mut buf: Vec<u8> = Vec::new();
-//            acceptor
-//                .accept(stream.try_clone().unwrap())
-//                .unwrap()
-//                .read(&mut buf);
-//            tx.send(buf.clone());
-//        }
-//        _ => continue,
-//    }
-//
-//
-//let serialized_cert: String = ssl_crt
-//    .public_key()
-//    .unwrap()
-//    .public_key_to_pem()
-//    .unwrap()
-//    .into_iter()
-//    .map(|x| x as char)
-//    .collect();
-//let serialized_key: String = ssl_key
-//    .private_key_to_pem()
-//    .unwrap()
-//    .into_iter()
-//    .map(|x| x as char)
-//    .collect();
